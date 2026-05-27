@@ -353,7 +353,7 @@
       </div>
       <div class="control-group">
         <label>Requests / Second</label>
-        <input type="number" id="rate" min="1" max="50" value="10">
+        <input type="number" id="rate" min="1" max="20" value="10">
       </div>
       <div class="control-group">
         <label>Prefix</label>
@@ -446,6 +446,7 @@ let running = false;
 let availableResults = [];
 
 let totalNames = 0;
+let totalChecks = 0;
 let checkedNames = 0;
 let availableCount = 0;
 let errorCount = 0;
@@ -710,9 +711,8 @@ async function checkDomain(name, tld, signal) {
     }
   }
 
-  const url = `/check-io?domain=${name}`;
   try {
-    const resp = await fetch(url, { signal });
+    const resp = await fetch(`/check-io?domain=${name}`, { signal });
     if (!resp.ok) return 'error';
     const data = await resp.json();
     return data.status;
@@ -727,9 +727,9 @@ function updateStats() {
   document.getElementById('stat-available').textContent = availableCount.toLocaleString();
   document.getElementById('stat-errors').textContent = errorCount.toLocaleString();
 
-  const pct = totalNames > 0 ? ((checkedNames / totalNames) * 100) : 0;
-  document.getElementById('progress-fill').style.width = pct + '%';
-  document.getElementById('progress-pct').textContent = pct.toFixed(1) + '%';
+  const pct = totalChecks > 0 ? ((checkedNames / totalChecks) * 100) : 0;
+  document.getElementById('progress-fill').style.width = Math.min(pct, 100) + '%';
+  document.getElementById('progress-pct').textContent = Math.min(pct, 100).toFixed(1) + '%';
 
   const now = Date.now();
   if (now - lastSpeedCheck >= 1000) {
@@ -745,9 +745,9 @@ function updateStats() {
     document.getElementById('stat-speed').textContent = avgSpeed.toFixed(1);
 
     if (avgSpeed > 0) {
-      const remaining = totalNames - checkedNames;
+      const remaining = totalChecks - checkedNames;
       const etaSeconds = remaining / avgSpeed;
-      document.getElementById('progress-eta').textContent = 'ETA: ' + formatTime(etaSeconds);
+      document.getElementById('progress-eta').textContent = 'ETA: ' + formatTime(Math.max(0, etaSeconds));
     }
   }
 
@@ -855,7 +855,7 @@ async function startSearch() {
     suffixes: suffixes[0] ? suffixes.join(' ') : '',
   };
 
-  const totalChecks = totalNames * tlds.length;
+  totalChecks = totalNames * tlds.length;
   const etaSeconds = totalChecks / rate;
   const prefixNote = prefixes[0] ? `prefixes: ${prefixes.join(', ')}` : '';
   const suffixNote = suffixes[0] ? `suffixes: ${suffixes.join(', ')}` : '';
@@ -893,6 +893,7 @@ async function startSearch() {
 
   const nameGen = generateAllPairs(length, prefixes, suffixes, strategy);
   let uiUpdateScheduled = false;
+  let pending = 0;
 
   function scheduleUIUpdate() {
     if (!uiUpdateScheduled) {
@@ -919,7 +920,9 @@ async function startSearch() {
         await sleep(interval);
         if (signal.aborted) break;
 
-        const promise = checkDomain(name, tld, signal).then(status => {
+        pending++;
+        checkDomain(name, tld, signal).then(status => {
+          pending--;
           nameResults[tld] = status;
           checkedNames++;
           if (status === 'error') errorCount++;
@@ -934,14 +937,14 @@ async function startSearch() {
             }
           }
           scheduleUIUpdate();
-        }).catch(() => {});
+        }).catch(() => { pending--; });
       }
     }
   } catch (e) {
     if (e.name !== 'AbortError') console.error(e);
   }
 
-  await sleep(500);
+  while (pending > 0) await sleep(100);
   updateStats();
   finishSearch();
 }

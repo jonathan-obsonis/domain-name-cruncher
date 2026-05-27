@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Domain Name Availability Checker</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f5f6f8;
+    color: #1f2328;
+    min-height: 100vh;
+    padding: 2rem;
+  }
+
+  .container { max-width: 960px; margin: 0 auto; }
+
+  h1 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+  }
+
+  .subtitle {
+    color: #656d76;
+    margin-bottom: 2rem;
+    font-size: 0.9rem;
+  }
+
+  .panel {
+    background: #fff;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+  }
+
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1rem;
+    align-items: end;
+  }
+
+  .control-group label {
+    display: block;
+    font-size: 0.8rem;
+    color: #656d76;
+    margin-bottom: 0.4rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  input[type="number"], input[type="text"], select {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    background: #fff;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    color: #1f2328;
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  input[type="number"]:focus, input[type="text"]:focus, select:focus {
+    border-color: #0969da;
+    box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.15);
+  }
+
+  .tld-group {
+    display: flex;
+    gap: 1rem;
+  }
+
+  .tld-check {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    cursor: pointer;
+    font-size: 0.95rem;
+  }
+
+  .tld-check input[type="checkbox"] {
+    accent-color: #0969da;
+    width: 16px;
+    height: 16px;
+  }
+
+  .actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+
+  button {
+    padding: 0.55rem 1.25rem;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: #f6f8fa;
+    color: #1f2328;
+  }
+
+  button:hover:not(:disabled) { background: #eaeef2; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-start {
+    background: #1a7f37;
+    border-color: #1a7f37;
+    color: #fff;
+  }
+  .btn-start:hover:not(:disabled) { background: #16653a; }
+
+  .btn-pause {
+    background: #9a6700;
+    border-color: #9a6700;
+    color: #fff;
+  }
+  .btn-pause:hover:not(:disabled) { background: #7d5500; }
+
+  .btn-stop {
+    background: #cf222e;
+    border-color: #cf222e;
+    color: #fff;
+  }
+  .btn-stop:hover:not(:disabled) { background: #a40e26; }
+
+  .btn-export {
+    margin-left: auto;
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .stat-card {
+    text-align: center;
+    padding: 0.75rem;
+    background: #f6f8fa;
+    border-radius: 6px;
+    border: 1px solid #e1e4e8;
+  }
+
+  .stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0969da;
+  }
+
+  .stat-value.available { color: #1a7f37; }
+  .stat-value.errors { color: #cf222e; }
+  .stat-value.speed { color: #8250df; }
+
+  .stat-label {
+    font-size: 0.75rem;
+    color: #656d76;
+    margin-top: 0.2rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .progress-wrap {
+    margin-bottom: 1rem;
+  }
+
+  .progress-bar-bg {
+    height: 8px;
+    background: #e1e4e8;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #0969da, #1a7f37);
+    border-radius: 4px;
+    width: 0%;
+    transition: width 0.3s;
+  }
+
+  .progress-text {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: #656d76;
+  }
+
+  .info-banner {
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    font-size: 0.85rem;
+    color: #656d76;
+    display: none;
+  }
+
+  .info-banner.visible { display: block; }
+  .info-banner .warn { color: #9a6700; }
+
+  .results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+  }
+
+  .results-header h2 {
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+
+  .results-count {
+    font-size: 0.85rem;
+    color: #656d76;
+  }
+
+  .results-table-wrap {
+    max-height: 500px;
+    overflow-y: auto;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+  }
+
+  .results-table-wrap::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .results-table-wrap::-webkit-scrollbar-track {
+    background: #f6f8fa;
+  }
+
+  .results-table-wrap::-webkit-scrollbar-thumb {
+    background: #c1c8ce;
+    border-radius: 4px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+
+  thead {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+
+  th {
+    background: #f6f8fa;
+    padding: 0.6rem 1rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #656d76;
+    border-bottom: 1px solid #d0d7de;
+  }
+
+  td {
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid #e1e4e8;
+  }
+
+  tr:hover td { background: #f6f8fa; }
+
+  .badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+
+  .badge-available {
+    background: #dafbe1;
+    color: #116329;
+    border: 1px solid #aceebb;
+  }
+
+  .badge-taken {
+    background: #ffebe9;
+    color: #82071e;
+    border: 1px solid #ffcecb;
+  }
+
+  .badge-error {
+    background: #fff8c5;
+    color: #6f5308;
+    border: 1px solid #f5e0a0;
+  }
+
+  .domain-name {
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    font-weight: 500;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: #8c959f;
+  }
+
+  .empty-state p { margin-top: 0.5rem; font-size: 0.9rem; }
+
+  .current-domain {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    color: #0969da;
+    font-size: 0.85rem;
+    min-height: 1.2em;
+  }
+
+  @media (max-width: 640px) {
+    .controls { grid-template-columns: 1fr; }
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    body { padding: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Domain Name Checker</h1>
+  <p class="subtitle">Generate all letter combinations and check availability via RDAP</p>
+
+  <div class="panel">
+    <div class="controls">
+      <div class="control-group">
+        <label>Name Length</label>
+        <input type="number" id="length" min="2" max="7" value="3">
+      </div>
+      <div class="control-group">
+        <label>Strategy</label>
+        <select id="strategy">
+          <option value="all">All Combinations</option>
+          <option value="cv">CV Patterns</option>
+          <option value="pronounceable" selected>Pronounceable</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label>Requests / Second</label>
+        <input type="number" id="rate" min="1" max="50" value="10">
+      </div>
+      <div class="control-group">
+        <label>Prefix</label>
+        <input type="text" id="prefix" placeholder="e.g. ba, be, bi">
+      </div>
+      <div class="control-group">
+        <label>Suffix</label>
+        <input type="text" id="suffix" placeholder="e.g. fi, ly, er">
+      </div>
+      <div class="control-group">
+        <label>TLDs to Check</label>
+        <div class="tld-group">
+          <label class="tld-check"><input type="checkbox" id="tld-com" checked> .com</label>
+          <label class="tld-check"><input type="checkbox" id="tld-io" checked> .io</label>
+        </div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn-start" id="btn-start" onclick="startSearch()">Start</button>
+      <button class="btn-pause" id="btn-pause" onclick="togglePause()" disabled>Pause</button>
+      <button class="btn-stop" id="btn-stop" onclick="stopSearch()" disabled>Stop</button>
+      <button class="btn-export" id="btn-export" onclick="exportCSV()" disabled>Export CSV</button>
+    </div>
+  </div>
+
+  <div class="info-banner" id="info-banner"></div>
+
+  <div class="panel" id="progress-panel" style="display:none;">
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-value" id="stat-checked">0</div>
+        <div class="stat-label">Checked</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value available" id="stat-available">0</div>
+        <div class="stat-label">Available</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value errors" id="stat-errors">0</div>
+        <div class="stat-label">Errors</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value speed" id="stat-speed">0</div>
+        <div class="stat-label">Req/s</div>
+      </div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progress-fill"></div>
+      </div>
+      <div class="progress-text">
+        <span id="progress-pct">0%</span>
+        <span class="current-domain" id="current-domain"></span>
+        <span id="progress-eta">--</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="results-header">
+      <h2>Available Domains</h2>
+      <span class="results-count" id="results-count"></span>
+    </div>
+    <div class="results-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Domain</th>
+            <th>.com</th>
+            <th>.io</th>
+          </tr>
+        </thead>
+        <tbody id="results-body">
+          <tr class="empty-state" id="empty-row">
+            <td colspan="3">
+              <p>No results yet. Configure settings above and click Start.</p>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+let abortController = null;
+let paused = false;
+let pauseResolve = null;
+let running = false;
+let availableResults = [];
+
+let totalNames = 0;
+let checkedNames = 0;
+let availableCount = 0;
+let errorCount = 0;
+let speedSamples = [];
+let lastSpeedCheck = 0;
+let lastCheckedAtSpeed = 0;
+
+const VOWELS = new Set('aeiou');
+const VOWEL_STR = 'aeiou';
+const CONSONANT_STR = 'bcdfghjklmnpqrstvwxyz';
+
+function isVowel(c) { return VOWELS.has(c); }
+
+function isPronounceable(str) {
+  if (str.length < 2) return true;
+  let consec = 1;
+  for (let i = 1; i < str.length; i++) {
+    if (isVowel(str[i]) === isVowel(str[i - 1])) {
+      consec++;
+      if (consec >= 3) return false;
+    } else {
+      consec = 1;
+    }
+  }
+  return true;
+}
+
+function isCVPattern(str) {
+  for (let i = 1; i < str.length; i++) {
+    if (isVowel(str[i]) === isVowel(str[i - 1])) return false;
+  }
+  return true;
+}
+
+function* generateNames(length, prefix, suffix, strategy) {
+  const genLen = length - prefix.length - suffix.length;
+  if (genLen < 0) return;
+  if (genLen === 0) {
+    const name = prefix + suffix;
+    if (strategy === 'all' || (strategy === 'cv' && isCVPattern(name)) ||
+        (strategy === 'pronounceable' && isPronounceable(name))) {
+      yield name;
+    }
+    return;
+  }
+  if (strategy === 'all') {
+    yield* genAllCombos(genLen, prefix, suffix);
+  } else if (strategy === 'cv') {
+    yield* genCVPatterns(length, genLen, prefix, suffix);
+  } else {
+    yield* genPronounceableNames(genLen, prefix, suffix);
+  }
+}
+
+function* genAllCombos(genLen, prefix, suffix) {
+  const indices = new Array(genLen).fill(0);
+  const total = Math.pow(26, genLen);
+  for (let i = 0; i < total; i++) {
+    let mid = '';
+    for (let j = 0; j < genLen; j++) {
+      mid += String.fromCharCode(97 + indices[j]);
+    }
+    yield prefix + mid + suffix;
+    for (let j = genLen - 1; j >= 0; j--) {
+      indices[j]++;
+      if (indices[j] < 26) break;
+      indices[j] = 0;
+    }
+  }
+}
+
+function* genCVPatterns(totalLen, genLen, prefix, suffix) {
+  for (const startWithVowel of [false, true]) {
+    const pattern = [];
+    for (let i = 0; i < totalLen; i++) {
+      pattern.push(startWithVowel ? (i % 2 === 0 ? 'V' : 'C') : (i % 2 === 0 ? 'C' : 'V'));
+    }
+    let ok = true;
+    for (let i = 0; i < prefix.length && ok; i++) {
+      if ((pattern[i] === 'V') !== isVowel(prefix[i])) ok = false;
+    }
+    const sStart = totalLen - suffix.length;
+    for (let i = 0; i < suffix.length && ok; i++) {
+      if ((pattern[sStart + i] === 'V') !== isVowel(suffix[i])) ok = false;
+    }
+    if (!ok) continue;
+    yield* genCVMiddle('', genLen, prefix.length, pattern, prefix, suffix);
+  }
+}
+
+function* genCVMiddle(current, remaining, posOffset, pattern, prefix, suffix) {
+  if (remaining === 0) { yield prefix + current + suffix; return; }
+  const pos = posOffset + current.length;
+  const chars = pattern[pos] === 'V' ? VOWEL_STR : CONSONANT_STR;
+  for (const c of chars) {
+    yield* genCVMiddle(current + c, remaining - 1, posOffset, pattern, prefix, suffix);
+  }
+}
+
+function* genPronounceableNames(genLen, prefix, suffix) {
+  yield* genPronHelper('', genLen, prefix, suffix);
+}
+
+function* genPronHelper(current, remaining, prefix, suffix) {
+  if (remaining === 0) {
+    const full = prefix + current + suffix;
+    if (isPronounceable(full)) yield full;
+    return;
+  }
+  const soFar = prefix + current;
+  const len = soFar.length;
+  let canVowel = true, canConsonant = true;
+  if (len >= 2) {
+    const a = isVowel(soFar[len - 2]), b = isVowel(soFar[len - 1]);
+    if (a && b) canVowel = false;
+    if (!a && !b) canConsonant = false;
+  }
+  if (canVowel) {
+    for (const c of VOWEL_STR) yield* genPronHelper(current + c, remaining - 1, prefix, suffix);
+  }
+  if (canConsonant) {
+    for (const c of CONSONANT_STR) yield* genPronHelper(current + c, remaining - 1, prefix, suffix);
+  }
+}
+
+function countNames(length, prefix, suffix, strategy) {
+  const genLen = length - prefix.length - suffix.length;
+  if (genLen < 0) return 0;
+
+  if (strategy === 'all') {
+    return genLen === 0 ? 1 : Math.pow(26, genLen);
+  }
+
+  if (strategy === 'cv') {
+    if (genLen === 0) return isCVPattern(prefix + suffix) ? 1 : 0;
+    let total = 0;
+    for (const startWithVowel of [false, true]) {
+      const pattern = [];
+      for (let i = 0; i < length; i++) {
+        pattern.push(startWithVowel ? (i % 2 === 0 ? 'V' : 'C') : (i % 2 === 0 ? 'C' : 'V'));
+      }
+      let ok = true;
+      for (let i = 0; i < prefix.length && ok; i++) {
+        if ((pattern[i] === 'V') !== isVowel(prefix[i])) ok = false;
+      }
+      const sStart = length - suffix.length;
+      for (let i = 0; i < suffix.length && ok; i++) {
+        if ((pattern[sStart + i] === 'V') !== isVowel(suffix[i])) ok = false;
+      }
+      if (!ok) continue;
+      let count = 1;
+      for (let i = prefix.length; i < length - suffix.length; i++) {
+        count *= pattern[i] === 'V' ? 5 : 21;
+      }
+      total += count;
+    }
+    return total;
+  }
+
+  if (genLen === 0) return isPronounceable(prefix + suffix) ? 1 : 0;
+  if (!isPronounceable(prefix) || !isPronounceable(suffix)) return 0;
+
+  let suffixLeadType = null, suffixLeadCount = 0;
+  if (suffix.length > 0) {
+    suffixLeadType = isVowel(suffix[0]) ? 'V' : 'C';
+    suffixLeadCount = 1;
+    for (let i = 1; i < suffix.length; i++) {
+      if ((isVowel(suffix[i]) ? 'V' : 'C') === suffixLeadType) suffixLeadCount++;
+      else break;
+    }
+  }
+
+  let states;
+  if (prefix.length === 0) {
+    states = { V1: 5, C1: 21 };
+    for (let i = 1; i < genLen; i++) states = dpStep(states);
+  } else {
+    const lastType = isVowel(prefix[prefix.length - 1]) ? 'V' : 'C';
+    let consec = 1;
+    for (let i = prefix.length - 2; i >= 0; i--) {
+      if ((isVowel(prefix[i]) ? 'V' : 'C') === lastType) consec++;
+      else break;
+    }
+    if (consec > 2) return 0;
+    states = { [lastType + consec]: 1 };
+    for (let i = 0; i < genLen; i++) states = dpStep(states);
+  }
+
+  if (suffix.length === 0) {
+    return Object.values(states).reduce((a, b) => a + b, 0);
+  }
+  let total = 0;
+  for (const [key, count] of Object.entries(states)) {
+    const type = key[0];
+    const consec = parseInt(key[1]);
+    if (type === suffixLeadType) {
+      if (consec + suffixLeadCount <= 2) total += count;
+    } else {
+      total += count;
+    }
+  }
+  return total;
+}
+
+function dpStep(states) {
+  const next = {};
+  function add(k, v) { next[k] = (next[k] || 0) + v; }
+  for (const [key, count] of Object.entries(states)) {
+    if (!count) continue;
+    if (key === 'V1') { add('V2', count * 5); add('C1', count * 21); }
+    else if (key === 'V2') { add('C1', count * 21); }
+    else if (key === 'C1') { add('V1', count * 5); add('C2', count * 21); }
+    else if (key === 'C2') { add('V1', count * 5); }
+  }
+  return next;
+}
+
+function parseList(input) {
+  const items = input.toLowerCase().replace(/[^a-z,\s]/g, '').split(/[,\s]+/).filter(Boolean);
+  return items.length > 0 ? [...new Set(items)] : [''];
+}
+
+function* generateAllPairs(length, prefixes, suffixes, strategy) {
+  const gens = [];
+  for (const prefix of prefixes) {
+    for (const suffix of suffixes) {
+      gens.push(generateNames(length, prefix, suffix, strategy));
+    }
+  }
+  let active = gens.length;
+  while (active > 0) {
+    for (let i = 0; i < gens.length; i++) {
+      if (!gens[i]) continue;
+      const r = gens[i].next();
+      if (r.done) { gens[i] = null; active--; }
+      else yield r.value;
+    }
+  }
+}
+
+function countAllPairs(length, prefixes, suffixes, strategy) {
+  let total = 0;
+  for (const prefix of prefixes) {
+    for (const suffix of suffixes) {
+      total += countNames(length, prefix, suffix, strategy);
+    }
+  }
+  return total;
+}
+
+async function checkDomain(name, tld, signal) {
+  if (tld === 'com') {
+    const url = `https://rdap.verisign.com/com/v1/domain/${name}.com`;
+    try {
+      const resp = await fetch(url, { signal });
+      if (resp.status === 404) return 'available';
+      if (resp.ok) return 'taken';
+      return 'error';
+    } catch (e) {
+      if (e.name === 'AbortError') throw e;
+      return 'error';
+    }
+  }
+
+  const url = `/check-io?domain=${name}`;
+  try {
+    const resp = await fetch(url, { signal });
+    if (!resp.ok) return 'error';
+    const data = await resp.json();
+    return data.status;
+  } catch (e) {
+    if (e.name === 'AbortError') throw e;
+    return 'error';
+  }
+}
+
+function updateStats() {
+  document.getElementById('stat-checked').textContent = checkedNames.toLocaleString();
+  document.getElementById('stat-available').textContent = availableCount.toLocaleString();
+  document.getElementById('stat-errors').textContent = errorCount.toLocaleString();
+
+  const pct = totalNames > 0 ? ((checkedNames / totalNames) * 100) : 0;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-pct').textContent = pct.toFixed(1) + '%';
+
+  const now = Date.now();
+  if (now - lastSpeedCheck >= 1000) {
+    const delta = checkedNames - lastCheckedAtSpeed;
+    const elapsed = (now - lastSpeedCheck) / 1000;
+    const speed = delta / elapsed;
+    speedSamples.push(speed);
+    if (speedSamples.length > 10) speedSamples.shift();
+    lastSpeedCheck = now;
+    lastCheckedAtSpeed = checkedNames;
+
+    const avgSpeed = speedSamples.reduce((a, b) => a + b, 0) / speedSamples.length;
+    document.getElementById('stat-speed').textContent = avgSpeed.toFixed(1);
+
+    if (avgSpeed > 0) {
+      const remaining = totalNames - checkedNames;
+      const etaSeconds = remaining / avgSpeed;
+      document.getElementById('progress-eta').textContent = 'ETA: ' + formatTime(etaSeconds);
+    }
+  }
+
+  document.getElementById('results-count').textContent =
+    `${availableCount} available of ${checkedNames.toLocaleString()} checked`;
+}
+
+function formatTime(seconds) {
+  if (seconds < 60) return Math.ceil(seconds) + 's';
+  if (seconds < 3600) return Math.ceil(seconds / 60) + 'm';
+  const h = Math.floor(seconds / 3600);
+  const m = Math.ceil((seconds % 3600) / 60);
+  return h + 'h ' + m + 'm';
+}
+
+function addResultRow(name, results) {
+  const empty = document.getElementById('empty-row');
+  if (empty) empty.remove();
+
+  const tbody = document.getElementById('results-body');
+  const row = document.createElement('tr');
+
+  const tlds = ['com', 'io'];
+  let domainCell = `<td class="domain-name">${name}</td>`;
+  let cells = '';
+
+  for (const tld of tlds) {
+    const status = results[tld];
+    if (status === undefined) {
+      cells += '<td>--</td>';
+    } else if (status === 'available') {
+      cells += `<td><span class="badge badge-available">Available</span></td>`;
+    } else if (status === 'taken') {
+      cells += `<td><span class="badge badge-taken">Taken</span></td>`;
+    } else {
+      cells += `<td><span class="badge badge-error">Error</span></td>`;
+    }
+  }
+
+  row.innerHTML = domainCell + cells;
+  tbody.prepend(row);
+}
+
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
+
+async function waitIfPaused() {
+  if (!paused) return;
+  return new Promise(resolve => { pauseResolve = resolve; });
+}
+
+async function startSearch() {
+  const length = parseInt(document.getElementById('length').value);
+  const rate = parseInt(document.getElementById('rate').value);
+  const strategy = document.getElementById('strategy').value;
+  const prefixes = parseList(document.getElementById('prefix').value);
+  const suffixes = parseList(document.getElementById('suffix').value);
+  const checkCom = document.getElementById('tld-com').checked;
+  const checkIo = document.getElementById('tld-io').checked;
+
+  if (!checkCom && !checkIo) {
+    showBanner('Select at least one TLD to check.', true);
+    return;
+  }
+
+  if (length < 2 || length > 7) {
+    showBanner('Length must be between 2 and 7.', true);
+    return;
+  }
+
+  for (const p of prefixes) {
+    for (const s of suffixes) {
+      if (p.length + s.length > length) {
+        showBanner(`Prefix "${p}" + suffix "${s}" is longer than the total name length.`, true);
+        return;
+      }
+      if (strategy !== 'all' && !isPronounceable(p)) {
+        showBanner(`Prefix "${p}" is not pronounceable (3+ consecutive vowels or consonants).`, true);
+        return;
+      }
+      if (strategy !== 'all' && !isPronounceable(s)) {
+        showBanner(`Suffix "${s}" is not pronounceable (3+ consecutive vowels or consonants).`, true);
+        return;
+      }
+    }
+  }
+
+  const tlds = [];
+  if (checkCom) tlds.push('com');
+  if (checkIo) tlds.push('io');
+
+  totalNames = countAllPairs(length, prefixes, suffixes, strategy);
+
+  if (totalNames === 0) {
+    showBanner('No valid names for this combination of settings.', true);
+    return;
+  }
+
+  const strategyLabel = { all: 'all combos', cv: 'cv patterns', pronounceable: 'pronounceable' }[strategy];
+  lastSearchMeta = {
+    length,
+    strategy: strategyLabel,
+    prefixes: prefixes[0] ? prefixes.join(' ') : '',
+    suffixes: suffixes[0] ? suffixes.join(' ') : '',
+  };
+
+  const totalChecks = totalNames * tlds.length;
+  const etaSeconds = totalChecks / rate;
+  const prefixNote = prefixes[0] ? `prefixes: ${prefixes.join(', ')}` : '';
+  const suffixNote = suffixes[0] ? `suffixes: ${suffixes.join(', ')}` : '';
+  const fixParts = [prefixNote, suffixNote].filter(Boolean).join('; ');
+  const fixNote = fixParts ? ` (${fixParts})` : '';
+
+  showBanner(
+    `${totalNames.toLocaleString()} ${strategyLabel} names${fixNote} × ${tlds.length} TLD${tlds.length > 1 ? 's' : ''} = ${totalChecks.toLocaleString()} lookups. ` +
+    `Estimated time: ~${formatTime(etaSeconds)}.` +
+    (totalNames > 500000 ? ` <span class="warn">This will take a while.</span>` : ''),
+    true
+  );
+
+  running = true;
+  paused = false;
+  checkedNames = 0;
+  availableCount = 0;
+  errorCount = 0;
+  availableResults = [];
+  speedSamples = [];
+  lastSpeedCheck = Date.now();
+  lastCheckedAtSpeed = 0;
+
+  document.getElementById('btn-start').disabled = true;
+  document.getElementById('btn-pause').disabled = false;
+  document.getElementById('btn-stop').disabled = false;
+  document.getElementById('btn-export').disabled = true;
+  document.getElementById('progress-panel').style.display = 'block';
+  document.getElementById('results-body').innerHTML = '';
+  updateStats();
+
+  abortController = new AbortController();
+  const signal = abortController.signal;
+  const interval = 1000 / rate;
+
+  const nameGen = generateAllPairs(length, prefixes, suffixes, strategy);
+  let uiUpdateScheduled = false;
+
+  function scheduleUIUpdate() {
+    if (!uiUpdateScheduled) {
+      uiUpdateScheduled = true;
+      requestAnimationFrame(() => {
+        updateStats();
+        uiUpdateScheduled = false;
+      });
+    }
+  }
+
+  try {
+    for (const name of nameGen) {
+      if (signal.aborted) break;
+      await waitIfPaused();
+      if (signal.aborted) break;
+
+      document.getElementById('current-domain').textContent = name;
+
+      const nameResults = {};
+      let checksForName = tlds.length;
+
+      for (const tld of tlds) {
+        await sleep(interval);
+        if (signal.aborted) break;
+
+        const promise = checkDomain(name, tld, signal).then(status => {
+          nameResults[tld] = status;
+          checkedNames++;
+          if (status === 'error') errorCount++;
+          checksForName--;
+
+          if (checksForName === 0) {
+            const hasAvailable = Object.values(nameResults).some(s => s === 'available');
+            if (hasAvailable) {
+              availableCount++;
+              availableResults.push({ name, ...nameResults });
+              addResultRow(name, nameResults);
+            }
+          }
+          scheduleUIUpdate();
+        }).catch(() => {});
+      }
+    }
+  } catch (e) {
+    if (e.name !== 'AbortError') console.error(e);
+  }
+
+  await sleep(500);
+  updateStats();
+  finishSearch();
+}
+
+function finishSearch() {
+  running = false;
+  document.getElementById('btn-start').disabled = false;
+  document.getElementById('btn-pause').disabled = true;
+  document.getElementById('btn-stop').disabled = true;
+  document.getElementById('btn-export').disabled = availableResults.length === 0;
+  document.getElementById('btn-pause').textContent = 'Pause';
+  document.getElementById('current-domain').textContent = 'Done';
+}
+
+function togglePause() {
+  if (!running) return;
+  paused = !paused;
+  document.getElementById('btn-pause').textContent = paused ? 'Resume' : 'Pause';
+  if (!paused && pauseResolve) {
+    pauseResolve();
+    pauseResolve = null;
+  }
+}
+
+function stopSearch() {
+  if (abortController) abortController.abort();
+  if (pauseResolve) {
+    paused = false;
+    pauseResolve();
+    pauseResolve = null;
+  }
+}
+
+let lastSearchMeta = {};
+
+function exportCSV() {
+  if (availableResults.length === 0) return;
+  let csv = 'Domain,.com,.io\n';
+  for (const r of availableResults) {
+    csv += `${r.name},${r.com || 'N/A'},${r.io || 'N/A'}\n`;
+  }
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const m = lastSearchMeta;
+  const parts = [`${m.length} letter`, m.strategy];
+  if (m.prefixes) parts.push(m.prefixes);
+  if (m.suffixes) parts.push(m.suffixes);
+  a.download = parts.join(' ') + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function showBanner(html, visible) {
+  const banner = document.getElementById('info-banner');
+  banner.innerHTML = html;
+  banner.classList.toggle('visible', visible);
+}
+
+function updateInfoBanner() {
+  const length = parseInt(document.getElementById('length').value);
+  const strategy = document.getElementById('strategy').value;
+  const prefixes = parseList(document.getElementById('prefix').value);
+  const suffixes = parseList(document.getElementById('suffix').value);
+  if (length >= 2 && length <= 7) {
+    const total = countAllPairs(length, prefixes, suffixes, strategy);
+    const label = { all: 'combinations', cv: 'CV patterns', pronounceable: 'pronounceable names' }[strategy];
+    const prefixNote = prefixes[0] ? ` with prefix${prefixes.length > 1 ? 'es' : ''} "${prefixes.join(', ')}"` : '';
+    const suffixNote = suffixes[0] ? ` with suffix${suffixes.length > 1 ? 'es' : ''} "${suffixes.join(', ')}"` : '';
+    showBanner(`${total.toLocaleString()} ${label} for length ${length}${prefixNote}${suffixNote}.`, true);
+  }
+}
+
+for (const id of ['length', 'strategy', 'prefix', 'suffix']) {
+  document.getElementById(id).addEventListener('input', updateInfoBanner);
+}
+</script>
+</body>
+</html>

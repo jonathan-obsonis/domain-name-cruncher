@@ -665,7 +665,7 @@ function dpStep(states) {
 }
 
 function parseList(input) {
-  const items = input.toLowerCase().replace(/[^a-z,\s]/g, '').split(/[,\s]+/).filter(Boolean);
+  const items = input.toLowerCase().replace(/[^a-z0-9,\s]/g, '').split(/[,\s]+/).filter(Boolean);
   return items.length > 0 ? [...new Set(items)] : [''];
 }
 

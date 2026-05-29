@@ -340,7 +340,7 @@
   <div class="panel">
     <div class="controls">
       <div class="control-group">
-        <label>Name Length</label>
+        <label>Max Length</label>
         <input type="number" id="length" min="2" max="7" value="3">
       </div>
       <div class="control-group">
@@ -668,11 +668,14 @@ function parseList(input) {
   return items.length > 0 ? [...new Set(items)] : [''];
 }
 
-function* generateAllPairs(length, prefixes, suffixes, strategy) {
+function* generateAllPairs(maxLength, prefixes, suffixes, strategy) {
   const gens = [];
   for (const prefix of prefixes) {
     for (const suffix of suffixes) {
-      gens.push(generateNames(length, prefix, suffix, strategy));
+      const minLen = Math.max(2, prefix.length + suffix.length);
+      for (let len = minLen; len <= maxLength; len++) {
+        gens.push(generateNames(len, prefix, suffix, strategy));
+      }
     }
   }
   let active = gens.length;
@@ -686,11 +689,14 @@ function* generateAllPairs(length, prefixes, suffixes, strategy) {
   }
 }
 
-function countAllPairs(length, prefixes, suffixes, strategy) {
+function countAllPairs(maxLength, prefixes, suffixes, strategy) {
   let total = 0;
   for (const prefix of prefixes) {
     for (const suffix of suffixes) {
-      total += countNames(length, prefix, suffix, strategy);
+      const minLen = Math.max(2, prefix.length + suffix.length);
+      for (let len = minLen; len <= maxLength; len++) {
+        total += countNames(len, prefix, suffix, strategy);
+      }
     }
   }
   return total;
@@ -822,7 +828,7 @@ async function startSearch() {
   for (const p of prefixes) {
     for (const s of suffixes) {
       if (p.length + s.length > length) {
-        showBanner(`Prefix "${p}" + suffix "${s}" is longer than the total name length.`, true);
+        showBanner(`Prefix "${p}" + suffix "${s}" is longer than max length ${length}.`, true);
         return;
       }
       if (strategy !== 'all' && !isPronounceable(p)) {
@@ -1012,7 +1018,7 @@ function updateInfoBanner() {
     const label = { all: 'combinations', cv: 'CV patterns', pronounceable: 'pronounceable names' }[strategy];
     const prefixNote = prefixes[0] ? ` with prefix${prefixes.length > 1 ? 'es' : ''} "${prefixes.join(', ')}"` : '';
     const suffixNote = suffixes[0] ? ` with suffix${suffixes.length > 1 ? 'es' : ''} "${suffixes.join(', ')}"` : '';
-    showBanner(`${total.toLocaleString()} ${label} for length ${length}${prefixNote}${suffixNote}.`, true);
+    showBanner(`${total.toLocaleString()} ${label} up to ${length} letters${prefixNote}${suffixNote}.`, true);
   }
 }
 

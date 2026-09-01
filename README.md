@@ -60,9 +60,10 @@ Combines words you supply into multi-word names.
 | Setting | Description |
 |---|---|
 | **Number of Words** | How many words go into each name (1–10) |
+| **Hyphens** | When ticked, each name is generated both joined and hyphenated. Untick to get joined names only |
 | **Words** | Your word list, one per line or separated by commas or spaces. Case is ignored and duplicates are dropped |
 
-Combinations are **ordered** and use each word at most once, because `redfox` and `foxred` are both worth checking. Each is generated **both joined and hyphenated** — 10 words choosing 2 gives 90 orderings × 2 forms = 180 domains. Only fully-hyphenated forms are produced, not partial mixes like `red-foxjump`.
+Combinations are **ordered** and use each word at most once, because `redfox` and `foxred` are both worth checking. With hyphens enabled, 10 words choosing 2 gives 90 orderings × 2 forms = 180 domains; with hyphens off, 90. Only fully-hyphenated forms are produced, not partial mixes like `red-foxjump`.
 
 ### Shared settings
 

@@ -424,6 +424,12 @@
             <option value="10">10</option>
           </select>
         </div>
+        <div class="control-group">
+          <label>Hyphens</label>
+          <div class="tld-group">
+            <label class="tld-check"><input type="checkbox" id="word-hyphens" checked> Include hyphenated</label>
+          </div>
+        </div>
         <div class="control-group wide">
           <label>Words</label>
           <textarea id="words" rows="4" placeholder="One per line, or separated by commas or spaces&#10;e.g. red fox jump quick lazy dog"></textarea>
@@ -758,16 +764,17 @@ function parseWords(input) {
   return [...new Set(items)];
 }
 
-// Ordered arrangements of k distinct words, each yielded joined and hyphenated.
-// Order matters for domains -- "redfox" and "foxred" are both worth checking.
-function* generateWordCombos(words, k) {
+// Ordered arrangements of k distinct words, yielded joined and -- when hyphens are
+// enabled -- hyphenated too. Order matters for domains: "redfox" and "foxred" are
+// both worth checking.
+function* generateWordCombos(words, k, includeHyphens) {
   const used = new Array(words.length).fill(false);
   const picked = [];
 
   function* recurse() {
     if (picked.length === k) {
       yield picked.join('');
-      if (k > 1) yield picked.join('-');
+      if (k > 1 && includeHyphens) yield picked.join('-');
       return;
     }
     for (let i = 0; i < words.length; i++) {
@@ -783,18 +790,18 @@ function* generateWordCombos(words, k) {
   yield* recurse();
 }
 
-function countWordCombos(words, k) {
+function countWordCombos(words, k, includeHyphens) {
   const n = words.length;
   if (k < 1 || k > n) return 0;
   let arrangements = 1;
   for (let i = 0; i < k; i++) arrangements *= (n - i);
-  return arrangements * (k > 1 ? 2 : 1);
+  return arrangements * (k > 1 && includeHyphens ? 2 : 1);
 }
 
-// Longest name k words can produce, including hyphens.
-function longestWordCombo(words, k) {
+// Longest name k words can produce. Hyphens add k-1 characters.
+function longestWordCombo(words, k, includeHyphens) {
   const lengths = [...words].map(w => w.length).sort((a, b) => b - a);
-  let total = k - 1;
+  let total = includeHyphens && k > 1 ? k - 1 : 0;
   for (let i = 0; i < k; i++) total += lengths[i];
   return total;
 }
@@ -1035,6 +1042,7 @@ function planLetterSearch() {
 function planWordSearch() {
   const words = parseWords(document.getElementById('words').value);
   const k = parseInt(document.getElementById('word-count').value);
+  const includeHyphens = document.getElementById('word-hyphens').checked;
 
   if (words.length === 0) {
     showBanner('Enter some words to combine.', true);
@@ -1046,20 +1054,20 @@ function planWordSearch() {
     return null;
   }
 
-  const longest = longestWordCombo(words, k);
+  const longest = longestWordCombo(words, k, includeHyphens);
   if (longest > MAX_LABEL_LENGTH) {
     showBanner(`Longest combination would be ${longest} characters, over the ${MAX_LABEL_LENGTH}-character domain limit. Use shorter words or fewer per name.`, true);
     return null;
   }
 
-  const totalNames = countWordCombos(words, k);
+  const totalNames = countWordCombos(words, k, includeHyphens);
 
   return {
-    nameGen: generateWordCombos(words, k),
+    nameGen: generateWordCombos(words, k, includeHyphens),
     totalNames,
     label: `${k}-word combination${totalNames > 1 ? 's' : ''}`,
-    note: ` from ${words.length} word${words.length > 1 ? 's' : ''}` + (k > 1 ? ', hyphenated and not' : ''),
-    meta: { filename: `${k} word combos ${words.length} words` },
+    note: ` from ${words.length} word${words.length > 1 ? 's' : ''}` + hyphenNote(k, includeHyphens),
+    meta: { filename: `${k} word combos ${words.length} words` + (includeHyphens ? '' : ' no hyphens') },
   };
 }
 
@@ -1217,9 +1225,15 @@ function updateInfoBanner() {
   }
 }
 
+function hyphenNote(k, includeHyphens) {
+  if (k < 2) return '';
+  return includeHyphens ? ', hyphenated and not' : ', no hyphens';
+}
+
 function updateWordInfoBanner() {
   const words = parseWords(document.getElementById('words').value);
   const k = parseInt(document.getElementById('word-count').value);
+  const includeHyphens = document.getElementById('word-hyphens').checked;
 
   if (words.length === 0) {
     showBanner('Enter words above to see how many combinations they make.', true);
@@ -1231,11 +1245,10 @@ function updateWordInfoBanner() {
     return;
   }
 
-  const total = countWordCombos(words, k);
-  const hyphenNote = k > 1 ? ', hyphenated and not' : '';
+  const total = countWordCombos(words, k, includeHyphens);
   showBanner(
     `${total.toLocaleString()} ${k}-word combination${total > 1 ? 's' : ''} ` +
-    `from ${words.length} word${words.length > 1 ? 's' : ''}${hyphenNote}.`,
+    `from ${words.length} word${words.length > 1 ? 's' : ''}${hyphenNote(k, includeHyphens)}.`,
     true
   );
 }
@@ -1243,6 +1256,8 @@ function updateWordInfoBanner() {
 for (const id of ['length', 'strategy', 'prefix', 'suffix', 'words', 'word-count']) {
   document.getElementById(id).addEventListener('input', updateInfoBanner);
 }
+
+document.getElementById('word-hyphens').addEventListener('change', updateInfoBanner);
 </script>
 </body>
 </html>

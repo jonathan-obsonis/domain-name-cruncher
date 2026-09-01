@@ -1,11 +1,18 @@
 # Domain Name Checker
 
-Generate and bulk-check short domain name availability across `.com` and `.io`.
+Generate and bulk-check domain name availability across `.com`, `.co.uk` and `.io`.
 
 ## How it works
 
-- `.com` availability is checked via [Verisign's public RDAP API](https://rdap.verisign.com) directly from the browser
-- `.io` availability is checked via a local Python server that queries the `whois.nic.io` WHOIS server (required to avoid CORS restrictions)
+Registries that run a public RDAP endpoint with permissive CORS headers are queried straight from the browser — a `404` means the domain is available, a `200` means it is taken:
+
+| TLD | Source | Needs the server? |
+|---|---|---|
+| `.com` | [Verisign RDAP](https://rdap.verisign.com) | no |
+| `.co.uk` | [Nominet RDAP](https://rdap.nominet.uk) | no |
+| `.io` | `whois.nic.io` over WHOIS | yes |
+
+`.io` has no public RDAP endpoint, so it goes through a local Python server that speaks WHOIS on port 43 and proxies the result (also sidestepping CORS).
 
 ## Requirements
 
@@ -40,7 +47,7 @@ Generate and bulk-check short domain name availability across `.com` and `.io`.
 | **Requests/Second** | How fast to check domains. Stay under ~15 to avoid rate-limiting |
 | **Prefix** | Lock the start of the name (e.g. `ba` or `be, bi` for multiple) |
 | **Suffix** | Lock the end of the name (e.g. `fi` or `ly, er` for multiple) |
-| **TLDs** | Check `.com`, `.io`, or both |
+| **TLDs** | Any combination of `.com`, `.co.uk` and `.io` |
 
 Click **Start** to begin. Results show only names with at least one available TLD. Use **Export CSV** to download the results.
 

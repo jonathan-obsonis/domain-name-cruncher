@@ -40,13 +40,35 @@ Registries that run a public RDAP endpoint with permissive CORS headers are quer
 
 ## Usage
 
+Two generators, selected by the tabs at the top. Both share the request rate, TLD selection and results table.
+
+### Letter Combinations
+
+Brute-forces the alphabet up to a given length.
+
 | Setting | Description |
 |---|---|
-| **Name Length** | Maximum character count of the domain name (2–15) |
+| **Max Length** | Maximum character count of the domain name (2–15) |
 | **Strategy** | `All Combinations` — every possible string; `CV Patterns` — strict consonant/vowel alternation; `Pronounceable` — no more than 2 consecutive vowels or consonants |
-| **Requests/Second** | How fast to check domains. Stay under ~15 to avoid rate-limiting |
 | **Prefix** | Lock the start of the name (e.g. `ba` or `be, bi` for multiple) |
 | **Suffix** | Lock the end of the name (e.g. `fi` or `ly, er` for multiple) |
+
+### Word Combinations
+
+Combines words you supply into multi-word names.
+
+| Setting | Description |
+|---|---|
+| **Number of Words** | How many words go into each name (1–10) |
+| **Words** | Your word list, one per line or separated by commas or spaces. Case is ignored and duplicates are dropped |
+
+Combinations are **ordered** and use each word at most once, because `redfox` and `foxred` are both worth checking. Each is generated **both joined and hyphenated** — 10 words choosing 2 gives 90 orderings × 2 forms = 180 domains. Only fully-hyphenated forms are produced, not partial mixes like `red-foxjump`.
+
+### Shared settings
+
+| Setting | Description |
+|---|---|
+| **Requests/Second** | How fast to check domains. Stay under ~15 to avoid rate-limiting |
 | **TLDs** | Any combination of `.com`, `.co.uk` and `.io` |
 
 Click **Start** to begin. Results show only names with at least one available TLD. Use **Export CSV** to download the results.

@@ -54,7 +54,7 @@
     letter-spacing: 0.5px;
   }
 
-  input[type="number"], input[type="text"], select {
+  input[type="number"], input[type="text"], select, textarea {
     width: 100%;
     padding: 0.5rem 0.75rem;
     background: #fff;
@@ -66,10 +66,49 @@
     transition: border-color 0.2s;
   }
 
-  input[type="number"]:focus, input[type="text"]:focus, select:focus {
+  input[type="number"]:focus, input[type="text"]:focus, select:focus, textarea:focus {
     border-color: #0969da;
     box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.15);
   }
+
+  .tabs {
+    display: flex;
+    gap: 0.25rem;
+    margin: -1.25rem -1.25rem 1.25rem;
+    padding: 0 1.25rem;
+    border-bottom: 1px solid #d0d7de;
+  }
+
+  .tab-btn {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    padding: 0.75rem 1rem;
+    color: #656d76;
+  }
+
+  .tab-btn:hover:not(:disabled) { background: none; color: #1f2328; }
+
+  .tab-btn.active {
+    color: #1f2328;
+    font-weight: 600;
+    border-bottom-color: #fd8c73;
+  }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .control-group.wide { grid-column: 1 / -1; }
+
+  textarea {
+    resize: vertical;
+    min-height: 5rem;
+    font-family: inherit;
+    line-height: 1.5;
+  }
+
+  .shared-controls { margin-top: 1rem; }
 
   .tld-group {
     display: flex;
@@ -335,33 +374,67 @@
 
 <div class="container">
   <h1>Domain Name Checker</h1>
-  <p class="subtitle">Generate all letter combinations and check availability via RDAP</p>
+  <p class="subtitle">Generate name candidates and check availability via RDAP</p>
 
   <div class="panel">
-    <div class="controls">
-      <div class="control-group">
-        <label>Max Length</label>
-        <input type="number" id="length" min="2" max="15" value="3">
+    <div class="tabs">
+      <button class="tab-btn active" id="tab-btn-letters" onclick="switchTab('letters')">Letter Combinations</button>
+      <button class="tab-btn" id="tab-btn-words" onclick="switchTab('words')">Word Combinations</button>
+    </div>
+
+    <div class="tab-panel active" id="tab-letters">
+      <div class="controls">
+        <div class="control-group">
+          <label>Max Length</label>
+          <input type="number" id="length" min="2" max="15" value="3">
+        </div>
+        <div class="control-group">
+          <label>Strategy</label>
+          <select id="strategy">
+            <option value="all">All Combinations</option>
+            <option value="cv">CV Patterns</option>
+            <option value="pronounceable" selected>Pronounceable</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label>Prefix</label>
+          <input type="text" id="prefix" placeholder="e.g. ba, be, bi">
+        </div>
+        <div class="control-group">
+          <label>Suffix</label>
+          <input type="text" id="suffix" placeholder="e.g. fi, ly, er">
+        </div>
       </div>
-      <div class="control-group">
-        <label>Strategy</label>
-        <select id="strategy">
-          <option value="all">All Combinations</option>
-          <option value="cv">CV Patterns</option>
-          <option value="pronounceable" selected>Pronounceable</option>
-        </select>
+    </div>
+
+    <div class="tab-panel" id="tab-words">
+      <div class="controls">
+        <div class="control-group">
+          <label>Number of Words</label>
+          <select id="word-count">
+            <option value="1">1</option>
+            <option value="2" selected>2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+            <option value="10">10</option>
+          </select>
+        </div>
+        <div class="control-group wide">
+          <label>Words</label>
+          <textarea id="words" rows="4" placeholder="One per line, or separated by commas or spaces&#10;e.g. red fox jump quick lazy dog"></textarea>
+        </div>
       </div>
+    </div>
+
+    <div class="controls shared-controls">
       <div class="control-group">
         <label>Requests / Second</label>
         <input type="number" id="rate" min="1" max="20" value="10">
-      </div>
-      <div class="control-group">
-        <label>Prefix</label>
-        <input type="text" id="prefix" placeholder="e.g. ba, be, bi">
-      </div>
-      <div class="control-group">
-        <label>Suffix</label>
-        <input type="text" id="suffix" placeholder="e.g. fi, ly, er">
       </div>
       <div class="control-group">
         <label>TLDs to Check</label>
@@ -372,6 +445,7 @@
         </div>
       </div>
     </div>
+
     <div class="actions">
       <button class="btn-start" id="btn-start" onclick="startSearch()">Start</button>
       <button class="btn-pause" id="btn-pause" onclick="togglePause()" disabled>Pause</button>
@@ -666,6 +740,65 @@ function dpStep(states) {
   return next;
 }
 
+let currentTab = 'letters';
+
+const MAX_LABEL_LENGTH = 63;
+
+function switchTab(tab) {
+  currentTab = tab;
+  for (const t of ['letters', 'words']) {
+    document.getElementById('tab-' + t).classList.toggle('active', t === tab);
+    document.getElementById('tab-btn-' + t).classList.toggle('active', t === tab);
+  }
+  updateInfoBanner();
+}
+
+function parseWords(input) {
+  const items = input.toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(' ').filter(Boolean);
+  return [...new Set(items)];
+}
+
+// Ordered arrangements of k distinct words, each yielded joined and hyphenated.
+// Order matters for domains -- "redfox" and "foxred" are both worth checking.
+function* generateWordCombos(words, k) {
+  const used = new Array(words.length).fill(false);
+  const picked = [];
+
+  function* recurse() {
+    if (picked.length === k) {
+      yield picked.join('');
+      if (k > 1) yield picked.join('-');
+      return;
+    }
+    for (let i = 0; i < words.length; i++) {
+      if (used[i]) continue;
+      used[i] = true;
+      picked.push(words[i]);
+      yield* recurse();
+      picked.pop();
+      used[i] = false;
+    }
+  }
+
+  yield* recurse();
+}
+
+function countWordCombos(words, k) {
+  const n = words.length;
+  if (k < 1 || k > n) return 0;
+  let arrangements = 1;
+  for (let i = 0; i < k; i++) arrangements *= (n - i);
+  return arrangements * (k > 1 ? 2 : 1);
+}
+
+// Longest name k words can produce, including hyphens.
+function longestWordCombo(words, k) {
+  const lengths = [...words].map(w => w.length).sort((a, b) => b - a);
+  let total = k - 1;
+  for (let i = 0; i < k; i++) total += lengths[i];
+  return total;
+}
+
 function parseList(input) {
   const items = input.toLowerCase().replace(/[^a-z0-9,\s]/g, '').split(/[,\s]+/).filter(Boolean);
   return items.length > 0 ? [...new Set(items)] : [''];
@@ -817,76 +950,122 @@ async function waitIfPaused() {
   return new Promise(resolve => { pauseResolve = resolve; });
 }
 
-async function startSearch() {
-  const length = parseInt(document.getElementById('length').value);
+function startSearch() {
   const rate = parseInt(document.getElementById('rate').value);
-  const strategy = document.getElementById('strategy').value;
-  const prefixes = parseList(document.getElementById('prefix').value);
-  const suffixes = parseList(document.getElementById('suffix').value);
-  const checkCom = document.getElementById('tld-com').checked;
-  const checkCouk = document.getElementById('tld-couk').checked;
-  const checkIo = document.getElementById('tld-io').checked;
 
-  if (!checkCom && !checkCouk && !checkIo) {
+  const tlds = [];
+  if (document.getElementById('tld-com').checked) tlds.push('com');
+  if (document.getElementById('tld-couk').checked) tlds.push('couk');
+  if (document.getElementById('tld-io').checked) tlds.push('io');
+
+  if (tlds.length === 0) {
     showBanner('Select at least one TLD to check.', true);
     return;
   }
 
+  const plan = currentTab === 'words' ? planWordSearch() : planLetterSearch();
+  if (!plan) return;
+
+  const totalChecksForPlan = plan.totalNames * tlds.length;
+  const etaSeconds = totalChecksForPlan / rate;
+
+  showBanner(
+    `${plan.totalNames.toLocaleString()} ${plan.label}${plan.note} × ${tlds.length} TLD${tlds.length > 1 ? 's' : ''} = ` +
+    `${totalChecksForPlan.toLocaleString()} lookups. Estimated time: ~${formatTime(etaSeconds)}.` +
+    (plan.totalNames > 500000 ? ` <span class="warn">This will take a while.</span>` : ''),
+    true
+  );
+
+  lastSearchMeta = plan.meta;
+  runSearch(plan.nameGen, plan.totalNames, tlds, rate);
+}
+
+function planLetterSearch() {
+  const length = parseInt(document.getElementById('length').value);
+  const strategy = document.getElementById('strategy').value;
+  const prefixes = parseList(document.getElementById('prefix').value);
+  const suffixes = parseList(document.getElementById('suffix').value);
+
   if (length < 2 || length > 15) {
     showBanner('Length must be between 2 and 15.', true);
-    return;
+    return null;
   }
 
   for (const p of prefixes) {
     for (const s of suffixes) {
       if (p.length + s.length > length) {
         showBanner(`Prefix "${p}" + suffix "${s}" is longer than max length ${length}.`, true);
-        return;
+        return null;
       }
       if (strategy !== 'all' && !isPronounceable(p)) {
         showBanner(`Prefix "${p}" is not pronounceable (3+ consecutive vowels or consonants).`, true);
-        return;
+        return null;
       }
       if (strategy !== 'all' && !isPronounceable(s)) {
         showBanner(`Suffix "${s}" is not pronounceable (3+ consecutive vowels or consonants).`, true);
-        return;
+        return null;
       }
     }
   }
 
-  const tlds = [];
-  if (checkCom) tlds.push('com');
-  if (checkCouk) tlds.push('couk');
-  if (checkIo) tlds.push('io');
-
-  totalNames = countAllPairs(length, prefixes, suffixes, strategy);
-
+  const totalNames = countAllPairs(length, prefixes, suffixes, strategy);
   if (totalNames === 0) {
     showBanner('No valid names for this combination of settings.', true);
-    return;
+    return null;
   }
 
-  const strategyLabel = { all: 'all combos', cv: 'cv patterns', pronounceable: 'pronounceable' }[strategy];
-  lastSearchMeta = {
-    length,
-    strategy: strategyLabel,
-    prefixes: prefixes[0] ? prefixes.join(' ') : '',
-    suffixes: suffixes[0] ? suffixes.join(' ') : '',
-  };
-
-  totalChecks = totalNames * tlds.length;
-  const etaSeconds = totalChecks / rate;
+  const label = { all: 'all combos', cv: 'cv patterns', pronounceable: 'pronounceable' }[strategy] + ' names';
   const prefixNote = prefixes[0] ? `prefixes: ${prefixes.join(', ')}` : '';
   const suffixNote = suffixes[0] ? `suffixes: ${suffixes.join(', ')}` : '';
   const fixParts = [prefixNote, suffixNote].filter(Boolean).join('; ');
-  const fixNote = fixParts ? ` (${fixParts})` : '';
 
-  showBanner(
-    `${totalNames.toLocaleString()} ${strategyLabel} names${fixNote} × ${tlds.length} TLD${tlds.length > 1 ? 's' : ''} = ${totalChecks.toLocaleString()} lookups. ` +
-    `Estimated time: ~${formatTime(etaSeconds)}.` +
-    (totalNames > 500000 ? ` <span class="warn">This will take a while.</span>` : ''),
-    true
-  );
+  const nameParts = [`${length} letter`, { all: 'all combos', cv: 'cv patterns', pronounceable: 'pronounceable' }[strategy]];
+  if (prefixes[0]) nameParts.push(prefixes.join(' '));
+  if (suffixes[0]) nameParts.push(suffixes.join(' '));
+
+  return {
+    nameGen: generateAllPairs(length, prefixes, suffixes, strategy),
+    totalNames,
+    label,
+    note: fixParts ? ` (${fixParts})` : '',
+    meta: { filename: nameParts.join(' ') },
+  };
+}
+
+function planWordSearch() {
+  const words = parseWords(document.getElementById('words').value);
+  const k = parseInt(document.getElementById('word-count').value);
+
+  if (words.length === 0) {
+    showBanner('Enter some words to combine.', true);
+    return null;
+  }
+
+  if (k > words.length) {
+    showBanner(`Need at least ${k} words to make ${k}-word combinations -- you entered ${words.length}.`, true);
+    return null;
+  }
+
+  const longest = longestWordCombo(words, k);
+  if (longest > MAX_LABEL_LENGTH) {
+    showBanner(`Longest combination would be ${longest} characters, over the ${MAX_LABEL_LENGTH}-character domain limit. Use shorter words or fewer per name.`, true);
+    return null;
+  }
+
+  const totalNames = countWordCombos(words, k);
+
+  return {
+    nameGen: generateWordCombos(words, k),
+    totalNames,
+    label: `${k}-word combination${totalNames > 1 ? 's' : ''}`,
+    note: ` from ${words.length} word${words.length > 1 ? 's' : ''}` + (k > 1 ? ', hyphenated and not' : ''),
+    meta: { filename: `${k} word combos ${words.length} words` },
+  };
+}
+
+async function runSearch(nameGen, plannedNames, tlds, rate) {
+  totalNames = plannedNames;
+  totalChecks = totalNames * tlds.length;
 
   running = true;
   paused = false;
@@ -910,7 +1089,6 @@ async function startSearch() {
   const signal = abortController.signal;
   const interval = 1000 / rate;
 
-  const nameGen = generateAllPairs(length, prefixes, suffixes, strategy);
   let uiUpdateScheduled = false;
   let pending = 0;
 
@@ -1009,11 +1187,7 @@ function exportCSV() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  const m = lastSearchMeta;
-  const parts = [`${m.length} letter`, m.strategy];
-  if (m.prefixes) parts.push(m.prefixes);
-  if (m.suffixes) parts.push(m.suffixes);
-  a.download = parts.join(' ') + '.csv';
+  a.download = (lastSearchMeta.filename || 'domains') + '.csv';
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -1025,6 +1199,11 @@ function showBanner(html, visible) {
 }
 
 function updateInfoBanner() {
+  if (currentTab === 'words') {
+    updateWordInfoBanner();
+    return;
+  }
+
   const length = parseInt(document.getElementById('length').value);
   const strategy = document.getElementById('strategy').value;
   const prefixes = parseList(document.getElementById('prefix').value);
@@ -1038,7 +1217,30 @@ function updateInfoBanner() {
   }
 }
 
-for (const id of ['length', 'strategy', 'prefix', 'suffix']) {
+function updateWordInfoBanner() {
+  const words = parseWords(document.getElementById('words').value);
+  const k = parseInt(document.getElementById('word-count').value);
+
+  if (words.length === 0) {
+    showBanner('Enter words above to see how many combinations they make.', true);
+    return;
+  }
+
+  if (k > words.length) {
+    showBanner(`Need at least ${k} words to make ${k}-word combinations -- you entered ${words.length}.`, true);
+    return;
+  }
+
+  const total = countWordCombos(words, k);
+  const hyphenNote = k > 1 ? ', hyphenated and not' : '';
+  showBanner(
+    `${total.toLocaleString()} ${k}-word combination${total > 1 ? 's' : ''} ` +
+    `from ${words.length} word${words.length > 1 ? 's' : ''}${hyphenNote}.`,
+    true
+  );
+}
+
+for (const id of ['length', 'strategy', 'prefix', 'suffix', 'words', 'word-count']) {
   document.getElementById(id).addEventListener('input', updateInfoBanner);
 }
 </script>

@@ -36,6 +36,10 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
             return
         super().do_GET()
 
+    def end_headers(self):
+        self.send_header('Cache-Control', 'no-store')
+        super().end_headers()
+
     def send_json(self, code, data):
         body = json.dumps(data).encode()
         self.send_response(code)

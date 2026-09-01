@@ -341,7 +341,7 @@
     <div class="controls">
       <div class="control-group">
         <label>Max Length</label>
-        <input type="number" id="length" min="2" max="10" value="3">
+        <input type="number" id="length" min="2" max="15" value="3">
       </div>
       <div class="control-group">
         <label>Strategy</label>
@@ -820,8 +820,8 @@ async function startSearch() {
     return;
   }
 
-  if (length < 2 || length > 10) {
-    showBanner('Length must be between 2 and 10.', true);
+  if (length < 2 || length > 15) {
+    showBanner('Length must be between 2 and 15.', true);
     return;
   }
 
@@ -1016,7 +1016,7 @@ function updateInfoBanner() {
   const strategy = document.getElementById('strategy').value;
   const prefixes = parseList(document.getElementById('prefix').value);
   const suffixes = parseList(document.getElementById('suffix').value);
-  if (length >= 2 && length <= 10) {
+  if (length >= 2 && length <= 15) {
     const total = countAllPairs(length, prefixes, suffixes, strategy);
     const label = { all: 'combinations', cv: 'CV patterns', pronounceable: 'pronounceable names' }[strategy];
     const prefixNote = prefixes[0] ? ` with prefix${prefixes.length > 1 ? 'es' : ''} "${prefixes.join(', ')}"` : '';

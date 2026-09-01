@@ -35,7 +35,7 @@ Generate and bulk-check short domain name availability across `.com` and `.io`.
 
 | Setting | Description |
 |---|---|
-| **Name Length** | Maximum character count of the domain name (2–10) |
+| **Name Length** | Maximum character count of the domain name (2–15) |
 | **Strategy** | `All Combinations` — every possible string; `CV Patterns` — strict consonant/vowel alternation; `Pronounceable` — no more than 2 consecutive vowels or consonants |
 | **Requests/Second** | How fast to check domains. Stay under ~15 to avoid rate-limiting |
 | **Prefix** | Lock the start of the name (e.g. `ba` or `be, bi` for multiple) |

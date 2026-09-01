@@ -25,15 +25,17 @@ Generate and bulk-check short domain name availability across `.com` and `.io`.
    python3 server.py
    ```
 
+   If port 8080 is already taken, pass another one: `python3 server.py 8087`.
+
 3. Open [http://localhost:8080](http://localhost:8080) in your browser.
 
-> If you only want to check `.com` domains, the server is optional — you can open `index.html` directly in a browser. `.io` checking requires the server.
+> Don't open `index.html` directly from disk. Browsers treat `file://` pages as a unique origin and block their cross-origin requests outright, so the `.com` RDAP lookups fail with an error like *"'file:' URLs are treated as unique security origins"*. Serve the page over HTTP with `server.py`.
 
 ## Usage
 
 | Setting | Description |
 |---|---|
-| **Name Length** | Total character count of the domain name (2–7) |
+| **Name Length** | Maximum character count of the domain name (2–10) |
 | **Strategy** | `All Combinations` — every possible string; `CV Patterns` — strict consonant/vowel alternation; `Pronounceable` — no more than 2 consecutive vowels or consonants |
 | **Requests/Second** | How fast to check domains. Stay under ~15 to avoid rate-limiting |
 | **Prefix** | Lock the start of the name (e.g. `ba` or `be, bi` for multiple) |

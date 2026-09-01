@@ -1,6 +1,9 @@
+import errno
 import http.server
 import json
+import os
 import socket
+import sys
 import urllib.parse
 import threading
 import time
@@ -75,6 +78,13 @@ def whois_lookup(domain):
     return response.decode('utf-8', errors='replace')
 
 if __name__ == '__main__':
-    server = http.server.ThreadingHTTPServer(('', 8080), RequestHandler)
-    print('Server running on http://localhost:8080')
+    port = int(sys.argv[1] if len(sys.argv) > 1 else os.environ.get('PORT', 8080))
+    try:
+        server = http.server.ThreadingHTTPServer(('', port), RequestHandler)
+    except OSError as e:
+        if e.errno == errno.EADDRINUSE:
+            print(f'Port {port} is already in use. Try: python3 server.py {port + 1}')
+            raise SystemExit(1)
+        raise
+    print(f'Server running on http://localhost:{port}')
     server.serve_forever()
